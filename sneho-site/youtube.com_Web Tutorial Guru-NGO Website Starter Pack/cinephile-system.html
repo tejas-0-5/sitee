@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Cinephile Intelligence System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&family=Neue+Haas+Grotesk+Display+Pro:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060608;
+    --surface: rgba(255,255,255,0.03);
+    --surface-hover: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.08);
+    --border-active: rgba(255,255,255,0.2);
+    --text-primary: #f0ece4;
+    --text-secondary: rgba(240,236,228,0.5);
+    --text-muted: rgba(240,236,228,0.25);
+    --accent: #c8a96e;
+    --accent-dim: rgba(200,169,110,0.15);
+    --accent-glow: rgba(200,169,110,0.06);
+    --red: #b05a5a;
+    --red-dim: rgba(176,90,90,0.15);
+    --blue: #5a7eb0;
+    --blue-dim: rgba(90,126,176,0.12);
+    --purple: #8a6eb0;
+    --purple-dim: rgba(138,110,176,0.12);
+    --green: #5a9070;
+    --green-dim: rgba(90,144,112,0.12);
+    --teal: #5a98a8;
+    --teal-dim: rgba(90,152,168,0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── CANVAS ── */
+  #bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 2.5rem 3rem 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .logo-block h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 0.12em;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+  .logo-block h1 em {
+    color: var(--accent);
+    font-style: italic;
+  }
+  .logo-block p {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── TABS ── */
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 2rem 3rem 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+    margin-bottom: 2.5rem;
+    overflow-x: auto;
+  }
+  nav::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    position: relative;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+  .tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+  }
+  .tab-btn:hover { color: var(--text-secondary); }
+  .tab-btn.active { color: var(--accent); }
+  .tab-btn.active::after { transform: scaleX(1); }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 0 3rem 4rem; }
+  .section.active { display: block; }
+
+  /* ── FILTER ROW ── */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+  }
+  .filter-chip {
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: none;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-chip:hover {
+    border-color: var(--border-active);
+    color: var(--text-secondary);
+  }
+  .filter-chip.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* ── FILM GRID ── */
+  .film-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .film-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .film-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .film-card:hover {
+    background: var(--surface-hover);
+    border-color: rgba(200,169,110,0.2);
+    transform: translateY(-2px);
+  }
+  .film-card:hover::before { opacity: 1; }
+  .film-card.expanded {
+    border-color: rgba(200,169,110,0.25);
+    background: rgba(200,169,110,0.04);
+  }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+  .card-meta-line {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .card-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .badge {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    font-family: 'DM Mono', monospace;
+  }
+  .badge-diff-Easy    { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(90,144,112,0.2); }
+  .badge-diff-Medium  { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(90,126,176,0.2); }
+  .badge-diff-Hard    { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(200,169,110,0.2); }
+  .badge-diff-Extreme { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(176,90,90,0.2); }
+  .badge-gem { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(90,126,176,0.2); }
+  .badge-cat { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .impact-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .impact-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    min-width: 58px;
+  }
+  .impact-track {
+    flex: 1;
+    height: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .impact-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), rgba(200,169,110,0.6));
+    border-radius: 1px;
+    transition: width 0.5s cubic-bezier(0.23,1,0.32,1);
+  }
+
+  .card-expand {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    margin-top: 4px;
+  }
+  .film-card.expanded .card-expand { display: block; }
+
+  .expand-why {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    margin-bottom: 8px;
+  }
+  .expand-exp {
+    font-size: 10px;
+    color: var(--accent);
+    font-style: italic;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 13px;
+  }
+
+  /* ── WATCH ORDER ── */
+  .path-container { display: flex; flex-direction: column; gap: 1px; }
+
+  .path-tier {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 1.5rem 1.75rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s;
+  }
+  .path-tier:hover { background: var(--surface-hover); }
+  .path-tier::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+  }
+  .path-tier.beginner::before    { background: var(--green); }
+  .path-tier.intermediate::before { background: var(--blue); }
+  .path-tier.advanced::before    { background: var(--accent); }
+  .path-tier.extreme::before     { background: var(--red); }
+
+  .tier-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+  .tier-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem;
+    font-weight: 300;
+    line-height: 1;
+    opacity: 0.15;
+  }
+  .tier-label-group {}
+  .tier-name {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+  }
+  .tier-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .tier-films {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 1rem;
+  }
+  .tier-film {
+    font-size: 11px;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    background: var(--surface);
+  }
+
+  /* ── RECOMMENDER ── */
+  .rec-container { max-width: 640px; }
+
+  .rec-intro {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 15px;
+    font-style: italic;
+  }
+
+  .rec-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+  .rec-input {
+    flex: 1;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-primary);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .rec-input:focus { border-color: var(--accent); }
+  .rec-input::placeholder { color: var(--text-muted); }
+
+  .rec-btn {
+    padding: 10px 20px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,169,110,0.3);
+    border-radius: 2px;
+    color: var(--accent);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .rec-btn:hover { background: rgba(200,169,110,0.2); }
+
+  .quick-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 2rem;
+  }
+  .quick-chip {
+    padding: 5px 12px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .quick-chip:hover {
+    border-color: var(--border-active);
+    color: var(--text-secondary);
+    background: var(--surface);
+  }
+
+  .rec-results { margin-top: 1.5rem; }
+
+  .rec-section-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rec-film {
+    padding: .75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    margin-bottom: 8px;
+  }
+  .rec-film-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .rec-film-why {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .rec-film-exp {
+    font-size: 10px;
+    color: var(--accent);
+    font-style: italic;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .branch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .branch-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1rem;
+  }
+  .branch-title {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: .75rem;
+  }
+  .branch-film {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .branch-film:last-child { border-bottom: none; }
+
+  /* ── GEMS ── */
+  .gems-intro {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 15px;
+    font-style: italic;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    max-width: 560px;
+    line-height: 1.65;
+  }
+
+  /* ── SERIES ── */
+  .series-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .series-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+  }
+  .series-card:hover {
+    background: var(--surface-hover);
+    border-color: rgba(200,169,110,0.18);
+  }
+  .series-card.expanded { border-color: rgba(200,169,110,0.25); }
+  .series-type {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(6,6,8,0.85);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #0d0d10;
+    border: 1px solid var(--border-active);
+    max-width: 540px;
+    width: 100%;
+    padding: 2.5rem;
+    position: relative;
+    animation: modal-in 0.3s cubic-bezier(0.23,1,0.32,1);
+  }
+  @keyframes modal-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-close {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 8px;
+    transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--text-primary); }
+
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.75rem;
+    font-weight: 300;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .modal-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 1.25rem;
+  }
+  .modal-divider {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 1.25rem;
+  }
+  .modal-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .modal-stat {}
+  .modal-stat-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .modal-stat-value {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .modal-why {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 1rem;
+  }
+  .modal-exp {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.2); border-radius: 2px; }
+
+  /* ── SECTION TITLE ── */
+  .section-eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    line-height: 1.1;
+  }
+  .section-title em { color: var(--accent); font-style: italic; }
+
+  /* ── COUNT PILL ── */
+  .count-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 20px;
+    font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  @media (max-width: 768px) {
+    header, nav, .section { padding-left: 1.5rem; padding-right: 1.5rem; }
+    .film-grid { grid-template-columns: 1fr; }
+    .branch-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="app">
+
+  <header>
+    <div class="logo-block">
+      <h1>Cinephile <em>Intelligence</em></h1>
+      <p>Advanced Cinema Discovery System</p>
+    </div>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('catalog',this)">Catalog</button>
+    <button class="tab-btn" onclick="switchTab('watchorder',this)">Watch Order</button>
+    <button class="tab-btn" onclick="switchTab('recommender',this)">Recommender</button>
+    <button class="tab-btn" onclick="switchTab('gems',this)">Hidden Gems</button>
+    <button class="tab-btn" onclick="switchTab('series',this)">Series</button>
+  </nav>
+
+  <!-- CATALOG -->
+  <div id="catalog" class="section active">
+    <div class="section-eyebrow">The Canon</div>
+    <div class="section-title">Full <em>Catalog</em> <span id="filmCount" class="count-pill">80 films</span></div>
+    <div class="filter-row" id="catFilters">
+      <button class="filter-chip active" onclick="filterCat(this,'all')">All</button>
+      <button class="filter-chip" onclick="filterCat(this,'psychological')">Psychological</button>
+      <button class="filter-chip" onclick="filterCat(this,'dark')">Dark / Existential</button>
+      <button class="filter-chip" onclick="filterCat(this,'visual')">Visual Poetry</button>
+      <button class="filter-chip" onclick="filterCat(this,'philosophical')">Philosophical</button>
+      <button class="filter-chip" onclick="filterCat(this,'crime')">Crime / Realism</button>
+      <button class="filter-chip" onclick="filterCat(this,'experimental')">Experimental</button>
+    </div>
+    <div class="film-grid" id="filmGrid"></div>
+  </div>
+
+  <!-- WATCH ORDER -->
+  <div id="watchorder" class="section">
+    <div class="section-eyebrow">The Progression</div>
+    <div class="section-title">Watch <em>Order</em></div>
+    <div class="path-container" id="pathContainer"></div>
+  </div>
+
+  <!-- RECOMMENDER -->
+  <div id="recommender" class="section">
+    <div class="section-eyebrow">Taste Matching</div>
+    <div class="section-title">Smart <em>Recommender</em></div>
+    <div class="rec-container">
+      <p class="rec-intro">Name a film that moved you. The system maps your aesthetic coordinates and finds what to watch next.</p>
+      <div class="rec-input-row">
+        <input class="rec-input" id="recInput" type="text" placeholder="e.g. Stalker, Persona, Burning..."/>
+        <button class="rec-btn" onclick="getRecommendations()">Search →</button>
+      </div>
+      <div class="quick-row">
+        <button class="quick-chip" onclick="quickRec('Stalker')">Stalker</button>
+        <button class="quick-chip" onclick="quickRec('Burning')">Burning</button>
+        <button class="quick-chip" onclick="quickRec('Persona')">Persona</button>
+        <button class="quick-chip" onclick="quickRec('Eraserhead')">Eraserhead</button>
+        <button class="quick-chip" onclick="quickRec('Requiem for a Dream')">Requiem for a Dream</button>
+        <button class="quick-chip" onclick="quickRec('2001')">2001: A Space Odyssey</button>
+        <button class="quick-chip" onclick="quickRec('Mulholland Drive')">Mulholland Drive</button>
+        <button class="quick-chip" onclick="quickRec('Come and See')">Come and See</button>
+      </div>
+      <div class="rec-results" id="recResults"></div>
+    </div>
+  </div>
+
+  <!-- GEMS -->
+  <div id="gems" class="section">
+    <div class="section-eyebrow">The Obscure Canon</div>
+    <div class="section-title">Hidden <em>Gems</em></div>
+    <p class="gems-intro">Twenty films praised in the quieter corners of cinephile discourse — Letterboxd deep dives, MUBI forums, late-night film subreddits — rarely reaching general audiences.</p>
+    <div class="film-grid" id="gemsGrid"></div>
+  </div>
+
+  <!-- SERIES -->
+  <div id="series" class="section">
+    <div class="section-eyebrow">Long-Form Excellence</div>
+    <div class="section-title">Series <em>Selection</em></div>
+    <div class="series-grid" id="seriesGrid"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal(null)">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─────────────────────────────────────────
+// THREE.JS BACKGROUND
+// ─────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.position.z = 30;
+
+  const resize = () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  };
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Particle field
+  const count = 500;
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    positions[i*3]   = (Math.random() - 0.5) * 80;
+    positions[i*3+1] = (Math.random() - 0.5) * 60;
+    positions[i*3+2] = (Math.random() - 0.5) * 40;
+    sizes[i] = Math.random() * 1.5 + 0.3;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  const mat = new THREE.PointsMaterial({
+    color: 0xc8a96e,
+    size: 0.05,
+    transparent: true,
+    opacity: 0.18,
+    sizeAttenuation: true,
+  });
+  scene.add(new THREE.Points(geo, mat));
+
+  // Floating rectangles (film-frame motif)
+  const rects = [];
+  for (let i = 0; i < 8; i++) {
+    const w = Math.random() * 3 + 1;
+    const h = w * (9/16);
+    const g = new THREE.PlaneGeometry(w, h);
+    const m = new THREE.MeshBasicMaterial({
+      color: 0xc8a96e,
+      transparent: true,
+      opacity: Math.random() * 0.04 + 0.01,
+      wireframe: true,
+    });
+    const mesh = new THREE.Mesh(g, m);
+    mesh.position.set(
+      (Math.random()-0.5)*50,
+      (Math.random()-0.5)*40,
+      (Math.random()-0.5)*20 - 5
+    );
+    mesh.rotation.z = (Math.random()-0.5)*0.4;
+    mesh.userData = {
+      vy: (Math.random()-0.5)*0.008,
+      vr: (Math.random()-0.5)*0.002,
+    };
+    scene.add(mesh);
+    rects.push(mesh);
+  }
+
+  let t = 0;
+  let mouseX = 0, mouseY = 0;
+  document.addEventListener('mousemove', e => {
+    mouseX = (e.clientX/window.innerWidth - 0.5) * 0.3;
+    mouseY = (e.clientY/window.innerHeight - 0.5) * 0.2;
+  });
+
+  const animate = () => {
+    requestAnimationFrame(animate);
+    t += 0.005;
+    camera.position.x += (mouseX - camera.position.x) * 0.03;
+    camera.position.y += (-mouseY - camera.position.y) * 0.03;
+    camera.lookAt(0,0,0);
+
+    rects.forEach(r => {
+      r.position.y += r.userData.vy;
+      r.rotation.z += r.userData.vr;
+      if (r.position.y > 25) r.position.y = -25;
+      if (r.position.y < -25) r.position.y = 25;
+    });
+
+    renderer.render(scene, camera);
+  };
+  animate();
+})();
+
+// ─────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────
+const FILMS = [
+  {title:"Andrei Rublev",year:1966,dir:"Andrei Tarkovsky",cat:"philosophical",diff:"Hard",impact:10,exp:"visual meditation on suffering and art",why:"Tarkovsky's definitive thesis on art, suffering, and spiritual endurance across a fractured medieval Russia.",gem:false},
+  {title:"Mirror",year:1975,dir:"Andrei Tarkovsky",cat:"experimental",diff:"Extreme",impact:10,exp:"memory dissolved into cinema",why:"Non-linear autobiography that dissolves the boundary between dream, memory, history, and the film itself.",gem:false},
+  {title:"Stalker",year:1979,dir:"Andrei Tarkovsky",cat:"philosophical",diff:"Hard",impact:10,exp:"slow burn transcendence",why:"A journey into the Zone — metaphysical sci-fi where the destination is human desire and disappointment itself.",gem:false},
+  {title:"The Sacrifice",year:1986,dir:"Andrei Tarkovsky",cat:"philosophical",diff:"Hard",impact:10,exp:"spiritual surrender",why:"Tarkovsky's final film — a man's wager with God. Contains one of the most devastating long takes in cinema.",gem:false},
+  {title:"Persona",year:1966,dir:"Ingmar Bergman",cat:"psychological",diff:"Hard",impact:10,exp:"identity collapse",why:"Bergman deconstructs identity and cinematic illusion simultaneously. One of the five greatest films ever made.",gem:false},
+  {title:"Hour of the Wolf",year:1968,dir:"Ingmar Bergman",cat:"dark",diff:"Hard",impact:9,exp:"artist consumed by demons",why:"Bergman's only horror film — a painter unraveling on an island. Terrifying and elegiac in equal measure.",gem:true},
+  {title:"The Seventh Seal",year:1957,dir:"Ingmar Bergman",cat:"philosophical",diff:"Medium",impact:9,exp:"existential allegory",why:"The ur-text of existential cinema. Death, faith, and meaninglessness rendered as pure archetypal image.",gem:false},
+  {title:"Scenes from a Marriage",year:1973,dir:"Ingmar Bergman",cat:"dark",diff:"Medium",impact:9,exp:"emotional destruction",why:"Six-hour dissection of a collapsing marriage — more psychologically violent than most horror films.",gem:false},
+  {title:"Winter Light",year:1963,dir:"Ingmar Bergman",cat:"dark",diff:"Hard",impact:9,exp:"faith vacuum",why:"A pastor losing his faith in winter. Bergman's most spare and personal film. 80 minutes of pure dread.",gem:true},
+  {title:"Come and See",year:1985,dir:"Elem Klimov",cat:"dark",diff:"Hard",impact:10,exp:"trauma immersion",why:"The most visceral anti-war film ever made. Its images age into you permanently. Not metaphor — record.",gem:false},
+  {title:"Satantango",year:1994,dir:"Béla Tarr",cat:"philosophical",diff:"Extreme",impact:10,exp:"slow burn civilizational collapse",why:"7.5-hour apocalypse in a dying village. Each shot a moral statement. The ultimate test of cinematic commitment.",gem:false},
+  {title:"Werckmeister Harmonies",year:2000,dir:"Béla Tarr",cat:"philosophical",diff:"Hard",impact:10,exp:"civilizational dread",why:"39 long takes depicting the collapse of social order through a dead whale and a mob.",gem:false},
+  {title:"Turin Horse",year:2011,dir:"Béla Tarr",cat:"philosophical",diff:"Extreme",impact:10,exp:"entropy made visible",why:"Tarr's final film — the end of the world in 30 shots. Nietzsche's horse. A farewell to cinema.",gem:false},
+  {title:"Jeanne Dielman",year:1975,dir:"Chantal Akerman",cat:"experimental",diff:"Extreme",impact:10,exp:"domestic horror",why:"3h20m of housework as radical feminist cinema. The most politically important film you will sit through.",gem:false},
+  {title:"Eraserhead",year:1977,dir:"David Lynch",cat:"experimental",diff:"Hard",impact:9,exp:"industrial nightmare",why:"The purest externalization of anxiety about parenthood and modern industrial existence ever filmed.",gem:false},
+  {title:"Lost Highway",year:1997,dir:"David Lynch",cat:"psychological",diff:"Extreme",impact:9,exp:"identity fracture",why:"Lynch at his most formally radical — identity split as Möbius strip narrative. Refuses any resolution.",gem:false},
+  {title:"Inland Empire",year:2006,dir:"David Lynch",cat:"experimental",diff:"Extreme",impact:9,exp:"reality dissolution",why:"Shot on DV, deeply uncomfortable — Lynch dismantles narrative grammar entirely. His most extreme work.",gem:true},
+  {title:"The Act of Killing",year:2012,dir:"Joshua Oppenheimer",cat:"dark",diff:"Hard",impact:10,exp:"moral vertigo",why:"Perpetrators of genocide re-enact their crimes as cinema. The most disturbing documentary ever made.",gem:false},
+  {title:"Holy Mountain",year:1973,dir:"Alejandro Jodorowsky",cat:"experimental",diff:"Extreme",impact:9,exp:"esoteric assault",why:"Mysticism as pure cinema. Designed to break your worldview apart and reassemble it differently.",gem:false},
+  {title:"El Topo",year:1970,dir:"Alejandro Jodorowsky",cat:"experimental",diff:"Hard",impact:9,exp:"acid western parable",why:"The original cult midnight film — part spaghetti western, part Buddhist koan, part psychic grenade.",gem:false},
+  {title:"Aguirre, Wrath of God",year:1972,dir:"Werner Herzog",cat:"dark",diff:"Medium",impact:9,exp:"madness documentary",why:"Kinski IS madness. Shot in conditions as extreme as the story. The Amazon swallows empire.",gem:false},
+  {title:"Fitzcarraldo",year:1982,dir:"Werner Herzog",cat:"philosophical",diff:"Medium",impact:9,exp:"obsession made literal",why:"A man drags a steamship over a mountain. Art, madness, and the absurdity of will made flesh.",gem:false},
+  {title:"Burning",year:2018,dir:"Lee Chang-dong",cat:"psychological",diff:"Medium",impact:9,exp:"class tension slow burn",why:"Class resentment and moral ambiguity so precise it haunts you for weeks. Chekhov's greenhouse.",gem:false},
+  {title:"Parasite",year:2019,dir:"Bong Joon-ho",cat:"dark",diff:"Easy",impact:9,exp:"class war as genre",why:"Entry-level masterwork. Class warfare rendered as thriller — formally perfect. The gateway film.",gem:false},
+  {title:"Memories of Murder",year:2003,dir:"Bong Joon-ho",cat:"crime",diff:"Medium",impact:9,exp:"moral ambiguity",why:"The procedural stripped of resolution — South Korea's original sin rendered as detective story.",gem:false},
+  {title:"Oldboy",year:2003,dir:"Park Chan-wook",cat:"psychological",diff:"Medium",impact:9,exp:"revenge labyrinth",why:"Trauma as narrative trap. The most formally satisfying and morally devastating revenge film constructed.",gem:false},
+  {title:"Poetry",year:2010,dir:"Lee Chang-dong",cat:"dark",diff:"Medium",impact:9,exp:"quiet devastation",why:"Dementia, guilt, and beauty coexist without false resolution. One of the most humane films of the century.",gem:true},
+  {title:"Pulse (Kairo)",year:2001,dir:"Kiyoshi Kurosawa",cat:"dark",diff:"Medium",impact:9,exp:"technological dread",why:"J-horror as meditation on loneliness in the internet age. More prescient in 2024 than in 2001.",gem:true},
+  {title:"Cure",year:1997,dir:"Kiyoshi Kurosawa",cat:"psychological",diff:"Hard",impact:9,exp:"identity as virus",why:"Hypnosis as societal metaphor — disturbing in the quietest, most cerebral way imaginable.",gem:true},
+  {title:"Shoplifters",year:2018,dir:"Hirokazu Koreeda",cat:"philosophical",diff:"Easy",impact:9,exp:"tender realism",why:"Family as choice vs blood — the ethics of poverty rendered with profound warmth and precision.",gem:false},
+  {title:"Tokyo Story",year:1953,dir:"Yasujirō Ozu",cat:"philosophical",diff:"Medium",impact:10,exp:"quiet grief",why:"The most devastating film about time, aging, and ingratitude — and it never once raises its voice.",gem:false},
+  {title:"A Tale of Two Sisters",year:2003,dir:"Kim Jee-woon",cat:"psychological",diff:"Medium",impact:8,exp:"unreliable horror",why:"Korean gothic horror as psychological puzzle — layers only fully reveal themselves on a second viewing.",gem:true},
+  {title:"Naked",year:1993,dir:"Mike Leigh",cat:"dark",diff:"Medium",impact:9,exp:"nihilist monologue",why:"David Thewlis delivers one of cinema's great performances — angry, brilliant, utterly self-destroying.",gem:true},
+  {title:"Caché (Hidden)",year:2005,dir:"Michael Haneke",cat:"psychological",diff:"Medium",impact:9,exp:"surveillance guilt",why:"Haneke weaponizes the static shot to indict bourgeois guilt. The final shot demands repeated viewing.",gem:false},
+  {title:"The White Ribbon",year:2009,dir:"Michael Haneke",cat:"dark",diff:"Hard",impact:9,exp:"fascism as atmosphere",why:"The roots of ideology and violence in a village. Shot in black and white to deny nostalgia.",gem:false},
+  {title:"Funny Games",year:1997,dir:"Michael Haneke",cat:"dark",diff:"Hard",impact:9,exp:"meta-violence",why:"Haneke indicts you for watching. The most honest, most uncomfortable film about screen violence.",gem:false},
+  {title:"The Seventh Continent",year:1989,dir:"Michael Haneke",cat:"dark",diff:"Hard",impact:9,exp:"systematic despair",why:"A family methodically destroys everything they own. Haneke's coldest, most controlled work.",gem:true},
+  {title:"Irreversible",year:2002,dir:"Gaspar Noé",cat:"dark",diff:"Extreme",impact:9,exp:"reverse trauma",why:"Structured backwards so time destroys hope. The most formally honest film about violence.",gem:false},
+  {title:"Enter the Void",year:2009,dir:"Gaspar Noé",cat:"experimental",diff:"Hard",impact:9,exp:"neon bardo",why:"First-person death and reincarnation in Tokyo. The Tibetan Book of the Dead as cinema.",gem:false},
+  {title:"Climax",year:2018,dir:"Gaspar Noé",cat:"dark",diff:"Hard",impact:8,exp:"ecstatic collapse",why:"A dance rehearsal descends into drug-induced hell. Shot in real time. Physically overwhelming.",gem:false},
+  {title:"The Master",year:2012,dir:"Paul Thomas Anderson",cat:"psychological",diff:"Medium",impact:9,exp:"power and need",why:"The most psychologically penetrating American film of its decade. Dominance as intimacy.",gem:false},
+  {title:"Magnolia",year:1999,dir:"Paul Thomas Anderson",cat:"dark",diff:"Medium",impact:9,exp:"emotional tornado",why:"Nine characters, one night, total emotional exposure. The frogs are the least strange thing in it.",gem:false},
+  {title:"A Separation",year:2011,dir:"Asghar Farhadi",cat:"crime",diff:"Medium",impact:10,exp:"moral maze",why:"No villain, no resolution — just the relentless machinery of circumstance and Iranian conscience.",gem:false},
+  {title:"Close-Up",year:1990,dir:"Abbas Kiarostami",cat:"philosophical",diff:"Medium",impact:10,exp:"reality and fiction collapse",why:"A man impersonates a filmmaker. The most philosophically destabilizing 98 minutes in cinema.",gem:false},
+  {title:"Taste of Cherry",year:1997,dir:"Abbas Kiarostami",cat:"philosophical",diff:"Hard",impact:10,exp:"Socratic suicide",why:"A man drives, asking strangers to help him die. The most oblique and profound film about the will to live.",gem:false},
+  {title:"Certified Copy",year:2010,dir:"Abbas Kiarostami",cat:"philosophical",diff:"Medium",impact:9,exp:"identity play",why:"Are they strangers or a long-married couple? Both. Neither. The ambiguity is irreducible.",gem:false},
+  {title:"Au hasard Balthazar",year:1966,dir:"Robert Bresson",cat:"philosophical",diff:"Hard",impact:10,exp:"grace and cruelty",why:"A donkey's life as meditation on suffering and grace. Many serious critics call this the greatest film.",gem:false},
+  {title:"Pickpocket",year:1959,dir:"Robert Bresson",cat:"crime",diff:"Medium",impact:9,exp:"spiritual crime",why:"Crime as existential search. Bresson strips cinema to its ethical skeleton. Devastating final shot.",gem:false},
+  {title:"L'Argent",year:1983,dir:"Robert Bresson",cat:"dark",diff:"Hard",impact:9,exp:"moral chain",why:"A counterfeit note destroys multiple lives. Fate as cold geometry. Bresson's most brutal film.",gem:false},
+  {title:"In the Mood for Love",year:2000,dir:"Wong Kar-wai",cat:"visual",diff:"Medium",impact:10,exp:"longing as cinema",why:"Desire restrained to its absolute breaking point. Wong Kar-wai's supreme visual achievement.",gem:false},
+  {title:"2046",year:2004,dir:"Wong Kar-wai",cat:"psychological",diff:"Hard",impact:9,exp:"memory labyrinth",why:"A man who cannot stop replaying the past. The continuation of In the Mood's ache.",gem:false},
+  {title:"Chungking Express",year:1994,dir:"Wong Kar-wai",cat:"philosophical",diff:"Easy",impact:8,exp:"urban poetry",why:"Loneliness and renewal in Hong Kong — warm, fleet, and impossibly beautiful. Essential entry point.",gem:false},
+  {title:"Yi Yi",year:2000,dir:"Edward Yang",cat:"philosophical",diff:"Medium",impact:10,exp:"life in full",why:"Three generations of a Taiwanese family over one year. The best film about what it means to live.",gem:false},
+  {title:"The Conformist",year:1970,dir:"Bernardo Bertolucci",cat:"psychological",diff:"Medium",impact:9,exp:"fascism as psychology",why:"The most beautiful political film ever made. Storaro's cinematography defines what cinema can look like.",gem:false},
+  {title:"8½",year:1963,dir:"Federico Fellini",cat:"psychological",diff:"Medium",impact:10,exp:"creative crisis",why:"A director's breakdown as artistic autobiography — the definitive film about making films.",gem:false},
+  {title:"Blow-Up",year:1966,dir:"Michelangelo Antonioni",cat:"psychological",diff:"Medium",impact:9,exp:"reality slip",why:"A photographer may have photographed a murder. Or not. Antonioni's most seductive ambiguity.",gem:false},
+  {title:"The Passenger",year:1975,dir:"Michelangelo Antonioni",cat:"philosophical",diff:"Hard",impact:9,exp:"identity abandonment",why:"A journalist assumes a dead man's identity. Antonioni on modernity, escape, and the dissolving self.",gem:true},
+  {title:"Pather Panchali",year:1955,dir:"Satyajit Ray",cat:"philosophical",diff:"Medium",impact:10,exp:"humanist poetry",why:"The founding document of Indian art cinema. Poverty, beauty, and childhood rendered with total honesty.",gem:false},
+  {title:"Son of Saul",year:2015,dir:"László Nemes",cat:"dark",diff:"Hard",impact:10,exp:"tunnel vision grief",why:"Auschwitz from inside — the camera never lets you look away from a father searching for his son's body.",gem:false},
+  {title:"Ida",year:2013,dir:"Paweł Pawlikowski",cat:"philosophical",diff:"Medium",impact:9,exp:"identity and history",why:"Shot in boxy black and white — Polish history, Jewish identity, and faith as visual poetry.",gem:false},
+  {title:"Cold War",year:2018,dir:"Paweł Pawlikowski",cat:"philosophical",diff:"Medium",impact:9,exp:"impossible love",why:"A love story as political tragedy — 88 minutes that span a decade of Iron Curtain longing.",gem:false},
+  {title:"Force Majeure",year:2014,dir:"Ruben Östlund",cat:"psychological",diff:"Medium",impact:9,exp:"masculinity autopsy",why:"A man's cowardice on a ski slope destroys his marriage. And his entire self-image.",gem:false},
+  {title:"The Square",year:2017,dir:"Ruben Östlund",cat:"psychological",diff:"Medium",impact:9,exp:"art world hypocrisy",why:"A museum curator's liberal values collapse. Östlund dissects performative virtue with surgical precision.",gem:false},
+  {title:"Three Colors: Blue",year:1993,dir:"Krzysztof Kieślowski",cat:"philosophical",diff:"Medium",impact:9,exp:"grief transmuted",why:"The most cinematically precise study of grief — color and music as emotional architecture.",gem:false},
+  {title:"Three Colors: Red",year:1994,dir:"Krzysztof Kieślowski",cat:"philosophical",diff:"Medium",impact:9,exp:"fate and connection",why:"Kieślowski's farewell — coincidence, voyeurism, and human connection. Perfect cinema.",gem:false},
+  {title:"Under the Skin",year:2013,dir:"Jonathan Glazer",cat:"dark",diff:"Hard",impact:9,exp:"alien predation",why:"The most genuinely unsettling British film in decades. Also the most honest film about female experience.",gem:false},
+  {title:"A Ghost Story",year:2017,dir:"David Lowery",cat:"philosophical",diff:"Medium",impact:9,exp:"time and grief",why:"A bedsheet ghost watches time devour everything he knew. Slow, devastating, quietly profound.",gem:true},
+  {title:"First Reformed",year:2017,dir:"Paul Schrader",cat:"dark",diff:"Medium",impact:9,exp:"faith crisis into radicalism",why:"A pastor's journal becomes a radicalization. Transcendental style deployed as spiritual thriller.",gem:false},
+  {title:"Landscape in the Mist",year:1988,dir:"Theo Angelopoulos",cat:"philosophical",diff:"Hard",impact:9,exp:"journey and myth",why:"Two children searching for a father across a frozen Greece — Angelopoulos's most accessible masterwork.",gem:true},
+  {title:"Eternity and a Day",year:1998,dir:"Theo Angelopoulos",cat:"philosophical",diff:"Hard",impact:9,exp:"dying man's last journey",why:"A dying poet's final day — time, language, and memory stretched across Greece into myth.",gem:true},
+  {title:"Possession",year:1981,dir:"Andrzej Zulawski",cat:"dark",diff:"Extreme",impact:9,exp:"divorce as body horror",why:"Isabelle Adjani's performance is an act of total self-immolation. Marriage as supernatural rupture.",gem:false},
+  {title:"Punishment Park",year:1971,dir:"Peter Watkins",cat:"dark",diff:"Medium",impact:9,exp:"political horror documentary",why:"Fake documentary of political prisoners hunted in the California desert. Made in 1971. Feels like now.",gem:true},
+  {title:"Pi",year:1998,dir:"Darren Aronofsky",cat:"psychological",diff:"Medium",impact:8,exp:"obsession and paranoia",why:"Number theory meets Kabbalah meets paranoid thriller. Shot on reversed film stock. Intensely lo-fi.",gem:true},
+  {title:"The Ruling Class",year:1972,dir:"Peter Medak",cat:"dark",diff:"Medium",impact:8,exp:"aristocratic madness",why:"Peter O'Toole as a schizophrenic earl who believes he is Jesus. The most savage class satire in cinema.",gem:true},
+  {title:"Talk to Her",year:2002,dir:"Pedro Almodóvar",cat:"dark",diff:"Medium",impact:9,exp:"love and ethics",why:"Two men in love with comatose women. The most morally complex film about care, obsession, and desire.",gem:false},
+  {title:"Neon Genesis Evangelion",year:1995,dir:"Hideaki Anno",cat:"psychological",diff:"Medium",impact:10,exp:"ego dissolution via giant robots",why:"Giant robots as pretext for a breakdown of identity, depression, and the terror of human connection.",gem:false},
+  {title:"Perfect Blue",year:1997,dir:"Satoshi Kon",cat:"psychological",diff:"Medium",impact:9,exp:"identity fracture",why:"Idol industry as psychological horror. Predates Black Swan by 13 years and goes further.",gem:false},
+  {title:"The Loneliest Planet",year:2011,dir:"Julia Loktev",cat:"philosophical",diff:"Medium",impact:8,exp:"a single second of cowardice",why:"One moment on a hiking trail permanently rewires two people's relationship. Nothing else happens. Enough.",gem:true},
+  {title:"Neon Bull",year:2015,dir:"Gabriel Mascaro",cat:"philosophical",diff:"Medium",impact:8,exp:"labor and body",why:"Brazilian working-class life rendered with extraordinary dignity and sensory immediacy.",gem:true},
+];
+
+const SERIES = [
+  {title:"Twin Peaks: The Return",year:2017,dir:"David Lynch",type:"Limited",imp:10,diff:"Extreme",exp:"television destroyed and rebuilt",why:"18 hours of Lynch without constraint. Part 8 alone permanently redefined what the medium can be."},
+  {title:"The Leftovers",year:2014,dir:"Perrotta / Lindelof",type:"Drama",imp:10,diff:"Medium",exp:"grief as genre",why:"Seasons 2 and 3 are among the greatest television ever made. About loss, faith, and why we endure."},
+  {title:"The Wire",year:2002,dir:"David Simon",type:"Drama",imp:10,diff:"Medium",exp:"systemic realism",why:"The greatest American novel of the 21st century in television form. Five seasons of institutional decay."},
+  {title:"I May Destroy You",year:2020,dir:"Michaela Coel",type:"Limited",imp:10,diff:"Hard",exp:"trauma reconstruction",why:"The most honest television about sexual violence, memory, and self-reconstruction ever made."},
+  {title:"Show Me a Hero",year:2015,dir:"Scott Zaillian",type:"Limited",imp:9,diff:"Medium",exp:"political tragedy",why:"The best political drama made for television — a mayor destroyed by doing the right thing."},
+  {title:"True Detective S1",year:2014,dir:"Cary Fukunaga",type:"Drama",imp:9,diff:"Medium",exp:"nihilist detective",why:"Rust Cohle as philosophy vessel. Stunning cinematography. The first season stands entirely alone."},
+  {title:"The Knick",year:2014,dir:"Steven Soderbergh",type:"Drama",imp:9,diff:"Medium",exp:"surgical obsession",why:"Soderbergh directing all 20 episodes — a cocaine-addicted surgeon in 1900 NYC. Unflinching."},
+  {title:"Rectify",year:2013,dir:"Ray McKinnon",type:"Drama",imp:9,diff:"Medium",exp:"slow burn liberation",why:"A man released from death row after 19 years trying to re-enter the world. Profound quietude."},
+  {title:"Patrick Melrose",year:2018,dir:"Edward Berger",type:"Limited",imp:9,diff:"Medium",exp:"class trauma",why:"Cumberbatch as Edward St Aubyn's alter ego — aristocratic abuse, addiction, survival."},
+  {title:"The Night Of",year:2016,dir:"Steven Zaillian",type:"Limited",imp:9,diff:"Medium",exp:"systemic decay",why:"A murder case as lens on the entire American criminal justice machine. Patient and devastating."},
+  {title:"Deadwood",year:2004,dir:"David Milch",type:"Drama",imp:9,diff:"Medium",exp:"civilization from mud",why:"Shakespearean language in an HBO western. Civilization and corruption revealed as the same process."},
+  {title:"Watchmen (HBO)",year:2019,dir:"Damon Lindelof",type:"Limited",imp:9,diff:"Medium",exp:"trauma and American history",why:"Interrogates the source text and American racial history simultaneously. Formally inventive."},
+  {title:"Olive Kitteridge",year:2014,dir:"Lisa Cholodenko",type:"Limited",imp:9,diff:"Easy",exp:"aging and regret",why:"Frances McDormand's masterclass. A woman who cannot be tender — and the lives she warps."},
+  {title:"Fleabag",year:2016,dir:"Phoebe Waller-Bridge",type:"Comedy",imp:9,diff:"Easy",exp:"broken self-awareness",why:"The fourth wall as a coping mechanism — the structure itself is the character's wound."},
+  {title:"Mindhunter",year:2017,dir:"David Fincher",type:"Drama",imp:8,diff:"Medium",exp:"evil systematized",why:"Fincher's procedural precision applied to the birth of criminal psychology. Season 1 is near-perfect."},
+];
+
+const WATCH_ORDER = [
+  {level:"beginner",label:"01 — Beginner",num:"01",desc:"Narratively rich and emotionally immediate. Deep enough to plant questions that won't resolve for years.",films:["Parasite","Burning","Oldboy","Memories of Murder","Chungking Express","Shoplifters","A Separation","Tokyo Story","Yi Yi","Three Colors: Blue","Force Majeure","Magnolia"]},
+  {level:"intermediate",label:"02 — Intermediate",num:"02",desc:"Slower and more layered. Begin to demand you watch rather than merely look. Patience rewarded.",films:["The Seventh Seal","8½","Persona","Come and See","Taste of Cherry","Close-Up","In the Mood for Love","Certified Copy","The Act of Killing","Stalker","The White Ribbon","Au hasard Balthazar","Ida","Son of Saul","First Reformed"]},
+  {level:"advanced",label:"03 — Advanced",num:"03",desc:"Abstract, symbolic, formally radical. These operate on the level of poetry and myth rather than narrative.",films:["Andrei Rublev","Satantango","Werckmeister Harmonies","Jeanne Dielman","Eraserhead","The Passenger","Holy Mountain","L'Argent","Possession","Landscape in the Mist","Hour of the Wolf","Pi","The Sacrifice"]},
+  {level:"extreme",label:"04 — Extreme",num:"04",desc:"Cinema at its most demanding. Not difficult for difficulty's sake — each is a monument. Enter only after the prior tier.",films:["Mirror","Turin Horse","Inland Empire","Enter the Void","Irreversible","Lost Highway","The Sacrifice (revisit)","Satantango (revisit)"]},
+];
+
+const RECOMMENDATIONS = {
+  "stalker": {core:["Andrei Rublev","The Sacrifice","Werckmeister Harmonies","Mirror","Taste of Cherry"],story:["Eternity and a Day","A Ghost Story","Close-Up"],abstract:["Turin Horse","Landscape in the Mist","Mirror"]},
+  "burning": {core:["Poetry","A Separation","Memories of Murder","Pulse (Kairo)","The Passenger"],story:["Caché (Hidden)","Force Majeure","The Loneliest Planet"],abstract:["Cure","Lost Highway","Certified Copy"]},
+  "persona": {core:["Hour of the Wolf","Winter Light","Lost Highway","Inland Empire","Neon Genesis Evangelion"],story:["Perfect Blue","Scenes from a Marriage","The Piano Teacher"],abstract:["Mirror","Jeanne Dielman","Eraserhead"]},
+  "eraserhead": {core:["Inland Empire","Possession","Lost Highway","Holy Mountain","Enter the Void"],story:["Pi","Climax","Hour of the Wolf"],abstract:["El Topo","Mirror","Jeanne Dielman"]},
+  "requiem for a dream": {core:["Irreversible","Naked","Climax","Possession","Funny Games"],story:["Enter the Void","Come and See","Talk to Her"],abstract:["Holy Mountain","Neon Genesis Evangelion","Satantango"]},
+  "2001": {core:["Stalker","Andrei Rublev","Enter the Void","The Sacrifice","Neon Genesis Evangelion"],story:["Pi","First Reformed","Taste of Cherry"],abstract:["Mirror","Turin Horse","Jeanne Dielman"]},
+  "mulholland drive": {core:["Lost Highway","Inland Empire","Persona","Perfect Blue","Eraserhead"],story:["Caché (Hidden)","Under the Skin","2046"],abstract:["El Topo","Mirror","Enter the Void"]},
+  "come and see": {core:["Son of Saul","The Act of Killing","Punishment Park","Irreversible","Funny Games"],story:["A Separation","Winter Light","Force Majeure"],abstract:["Satantango","Turin Horse","Come and See"]},
+};
+
+// ─────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────
+function renderFilmCard(f) {
+  const div = document.createElement('div');
+  div.className = 'film-card';
+  div.innerHTML = `
+    <div class="card-title">${f.title}</div>
+    <div class="card-meta-line">${f.year} · ${f.dir}</div>
+    <div class="card-badges">
+      <span class="badge badge-diff-${f.diff}">${f.diff}</span>
+      ${f.gem ? '<span class="badge badge-gem">Hidden Gem</span>' : ''}
+      <span class="badge badge-cat">${f.cat}</span>
+    </div>
+    <div class="impact-row">
+      <span class="impact-label">Impact ${f.impact}/10</span>
+      <div class="impact-track"><div class="impact-fill" style="width:${f.impact*10}%"></div></div>
+    </div>
+    <div class="card-expand">
+      <p class="expand-why">${f.why}</p>
+      <div class="expand-exp">${f.exp}</div>
+    </div>`;
+  div.addEventListener('click', () => {
+    div.classList.toggle('expanded');
+  });
+  div.addEventListener('dblclick', () => openModal(f));
+  return div;
+}
+
+function renderFilms(container, films) {
+  container.innerHTML = '';
+  films.forEach(f => container.appendChild(renderFilmCard(f)));
+}
+
+function filterCat(btn, cat) {
+  document.querySelectorAll('#catFilters .filter-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const unique = FILMS.filter((f,i,a) => a.findIndex(x=>x.title===f.title)===i);
+  const filtered = cat === 'all' ? unique : unique.filter(f => f.cat === cat);
+  const grid = document.getElementById('filmGrid');
+  renderFilms(grid, filtered);
+  document.getElementById('filmCount').textContent = filtered.length + ' films';
+}
+
+function renderWatchOrder() {
+  const c = document.getElementById('pathContainer');
+  WATCH_ORDER.forEach(tier => {
+    const div = document.createElement('div');
+    div.className = `path-tier ${tier.level}`;
+    div.innerHTML = `
+      <div class="tier-header">
+        <div class="tier-num">${tier.num}</div>
+        <div class="tier-label-group">
+          <div class="tier-name">${tier.label.split('—')[1].trim()}</div>
+          <div class="tier-desc">${tier.desc}</div>
+        </div>
+      </div>
+      <div class="tier-films">${tier.films.map(f=>`<span class="tier-film">${f}</span>`).join('')}</div>`;
+    c.appendChild(div);
+  });
+}
+
+function renderGems() {
+  const gems = FILMS.filter(f=>f.gem).filter((f,i,a)=>a.findIndex(x=>x.title===f.title)===i);
+  renderFilms(document.getElementById('gemsGrid'), gems);
+}
+
+function renderSeries() {
+  const c = document.getElementById('seriesGrid');
+  SERIES.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'series-card';
+    div.innerHTML = `
+      <div class="series-type">${s.type} · ${s.year}</div>
+      <div class="card-title">${s.title}</div>
+      <div class="card-meta-line">${s.dir}</div>
+      <div class="card-badges">
+        <span class="badge badge-diff-${s.diff}">${s.diff}</span>
+      </div>
+      <div class="impact-row">
+        <span class="impact-label">Impact ${s.imp}/10</span>
+        <div class="impact-track"><div class="impact-fill" style="width:${s.imp*10}%"></div></div>
+      </div>
+      <div class="card-expand">
+        <p class="expand-why">${s.why}</p>
+        <div class="expand-exp">${s.exp}</div>
+      </div>`;
+    div.addEventListener('click', () => div.classList.toggle('expanded'));
+    c.appendChild(div);
+  });
+}
+
+// ─────────────────────────────────────────
+// RECOMMENDER
+// ─────────────────────────────────────────
+function quickRec(title) {
+  document.getElementById('recInput').value = title;
+  getRecommendations();
+}
+
+function getRecommendations() {
+  const val = document.getElementById('recInput').value.trim().toLowerCase();
+  const c = document.getElementById('recResults');
+  const key = Object.keys(RECOMMENDATIONS).find(k => val.includes(k) || k.includes(val));
+  if (!key) {
+    c.innerHTML = `<p style="font-family:'Cormorant Garamond',serif;font-size:15px;font-style:italic;color:var(--text-muted);padding:1rem 0">No match found. Try one of the quick picks above, or be more specific.</p>`;
+    return;
+  }
+  const rec = RECOMMENDATIONS[key];
+  c.innerHTML = `
+    <div style="margin-bottom:1.5rem">
+      <div class="rec-section-label">Core recommendations (5 films)</div>
+      ${rec.core.map(t => recFilmCard(t)).join('')}
+    </div>
+    <div style="margin-bottom:.5rem;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted)">Branching paths</div>
+    <div class="branch-grid">
+      <div class="branch-col">
+        <div class="branch-title">→ More narrative</div>
+        ${rec.story.map(f=>`<div class="branch-film">${f}</div>`).join('')}
+      </div>
+      <div class="branch-col">
+        <div class="branch-title">→ More abstract</div>
+        ${rec.abstract.map(f=>`<div class="branch-film">${f}</div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function recFilmCard(title) {
+  const f = FILMS.find(x=>x.title.toLowerCase()===title.toLowerCase());
+  if (!f) return `<div class="rec-film"><div class="rec-film-title">${title}</div></div>`;
+  return `<div class="rec-film" onclick="openModal(window.__filmMap['${f.title.replace(/'/g,"\\'")}'])">
+    <div class="rec-film-title">${f.title} <span style="font-size:10px;color:var(--text-muted)">${f.year}</span></div>
+    <div class="rec-film-why">${f.why}</div>
+    <div class="rec-film-exp">${f.exp}</div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────
+// MODAL
+// ─────────────────────────────────────────
+window.__filmMap = {};
+FILMS.forEach(f => { window.__filmMap[f.title] = f; });
+
+function openModal(f) {
+  const c = document.getElementById('modalContent');
+  c.innerHTML = `
+    <div class="modal-title">${f.title}</div>
+    <div class="modal-meta">${f.year} · Directed by ${f.dir}</div>
+    <div class="modal-divider"></div>
+    <div class="modal-row">
+      <div class="modal-stat">
+        <div class="modal-stat-label">Difficulty</div>
+        <div class="modal-stat-value">${f.diff}</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Impact</div>
+        <div class="modal-stat-value">${f.impact} / 10</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-label">Category</div>
+        <div class="modal-stat-value">${f.cat}</div>
+      </div>
+    </div>
+    <p class="modal-why">${f.why}</p>
+    <div class="modal-exp">${f.exp}</div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('modalOverlay').classList.remove('open');
+});
+
+// ─────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+const uniqueFilms = FILMS.filter((f,i,a) => a.findIndex(x=>x.title===f.title)===i);
+renderFilms(document.getElementById('filmGrid'), uniqueFilms);
+document.getElementById('filmCount').textContent = uniqueFilms.length + ' films';
+renderWatchOrder();
+renderGems();
+renderSeries();
+</script>
+</body>
+</html>
